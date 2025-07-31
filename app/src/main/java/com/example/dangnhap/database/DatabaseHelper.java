@@ -1,37 +1,39 @@
 package com.example.dangnhap.database;
 
-
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
+
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "UserDatabase.db";
-    private static final int DATABASE_VERSION = 2; // Tăng version lên 2
+    private static final int DATABASE_VERSION = 2;
 
-    // Tên bảng và các cột
+    // Table and column names
     public static final String TABLE_USERS = "users";
-    public static final String COLUMN_ID = "_id"; // Sửa thành _id theo convention
+    public static final String COLUMN_ID = "_id";
     public static final String COLUMN_EMAIL = "email";
-    public static final String COLUMN_PASSWORD = "password_hash"; // Đổi tên để rõ ràng
-    public static final String COLUMN_CREATED_AT = "created_at"; // Thêm trường thời gian
-    public static final String COLUMN_LAST_LOGIN = "last_login"; // Thêm trường mới
+    public static final String COLUMN_PASSWORD_HASH = "password_hash";
+    public static final String COLUMN_FULL_NAME = "full_name";
+    public static final String COLUMN_CREATED_AT = "created_at";
+    public static final String COLUMN_LAST_LOGIN = "last_login";
 
-    // Câu lệnh tạo bảng
+    // SQL to create table
     private static final String CREATE_TABLE_USERS =
             "CREATE TABLE " + TABLE_USERS + "(" +
                     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                     COLUMN_EMAIL + " TEXT UNIQUE NOT NULL," +
-                    COLUMN_PASSWORD + " TEXT NOT NULL," + // Sẽ lưu password đã hash
-                    COLUMN_CREATED_AT + " DATETIME DEFAULT CURRENT_TIMESTAMP," +
-                    COLUMN_LAST_LOGIN + " DATETIME" +
+                    COLUMN_PASSWORD_HASH + " TEXT NOT NULL," +
+                    COLUMN_FULL_NAME + " TEXT," +
+                    COLUMN_CREATED_AT + " INTEGER DEFAULT (strftime('%s','now'))," +
+                    COLUMN_LAST_LOGIN + " INTEGER" +
                     ")";
 
-    // Câu lệnh tạo index cho email
+    // Index for faster email lookups
     private static final String CREATE_EMAIL_INDEX =
-            "CREATE INDEX idx_email ON " + TABLE_USERS + "(" + COLUMN_EMAIL + ")";
+            "CREATE INDEX idx_users_email ON " + TABLE_USERS + "(" + COLUMN_EMAIL + ")";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -44,7 +46,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL(CREATE_TABLE_USERS);
             db.execSQL(CREATE_EMAIL_INDEX);
             db.setTransactionSuccessful();
-            Log.d(TAG, "Database created successfully");
+            Log.i(TAG, "Database created successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error creating database", e);
         } finally {
@@ -56,23 +58,31 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         try {
             db.beginTransaction();
-
             if (oldVersion < 2) {
-                // Migration từ version 1 lên 2
                 db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN " +
-                        COLUMN_CREATED_AT + " DATETIME DEFAULT CURRENT_TIMESTAMP");
+                        COLUMN_FULL_NAME + " TEXT");
                 db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN " +
-                        COLUMN_LAST_LOGIN + " DATETIME");
+                        COLUMN_LAST_LOGIN + " INTEGER");
                 db.execSQL(CREATE_EMAIL_INDEX);
             }
-
             db.setTransactionSuccessful();
-            Log.d(TAG, "Database upgraded from " + oldVersion + " to " + newVersion);
+            Log.i(TAG, "Database upgraded from version " + oldVersion + " to " + newVersion);
         } catch (Exception e) {
             Log.e(TAG, "Error upgrading database", e);
-            // Fallback - xóa và tạo lại nếu có lỗi
+            recreateDatabase(db);
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private void recreateDatabase(SQLiteDatabase db) {
+        try {
+            db.beginTransaction();
             db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
             onCreate(db);
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            Log.e(TAG, "Error recreating database", e);
         } finally {
             db.endTransaction();
         }
@@ -81,17 +91,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onConfigure(SQLiteDatabase db) {
         super.onConfigure(db);
-        // Bật foreign key constraints và WAL mode
         db.setForeignKeyConstraintsEnabled(true);
-        db.enableWriteAheadLogging();
-    }
-
-    @Override
-    public void onOpen(SQLiteDatabase db) {
-        super.onOpen(db);
-        if (!db.isReadOnly()) {
-            // Bật foreign key constraints
-            db.execSQL("PRAGMA foreign_keys=ON;");
-        }
     }
 }
