@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="btnAdd" type="id"/>
+    <item name="incomeLayout" type="id"/>
+    <item name="tvTotalIncome" type="id"/>
+    <item name="tvIncomePerDay" type="id"/>
+    <item name="btnAddIncome" type="id"/>
+</resources>
